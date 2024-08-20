@@ -63,13 +63,21 @@ print_iter=1
 # g_step_size=1.
 # simultaneous=0
 
-# # EG
-d_optim=eg
-d_step_size=0.02
+# # gd-quasinewton
+d_optim=quasi_newton
+d_step_size=1.
 d_num_step=1
-g_optim=eg
+g_optim=gd
 g_step_size=0.02
-simultaneous=1
+simultaneous=0
+
+# # EG
+# d_optim=eg
+# d_step_size=0.02
+# d_num_step=1
+# g_optim=eg
+# g_step_size=0.02
+# simultaneous=1
 
 python run.py --epoch $epoch \
               --dataset $dataset \
