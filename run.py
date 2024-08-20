@@ -13,6 +13,8 @@ from data import *
 
 from utils import *
 
+# import update function for BFGS
+from scipy.optimize import fmin_bfgs
 
 def loss_wasserstein(discriminator, generator, real_data, noise):
     real_scores = discriminator(real_data)
@@ -139,6 +141,13 @@ def get_g_update(loss_fn, discriminator, generator,
 
         return [- g_step_size * xx for xx in inv_hessian_dx]
 
+    elif g_optim == "quasi_newton":
+        # BFGS or L-BFGS approximation
+        result = fmin_bfgs(lambda params: loss_fn().item(), x0=[p.clone().detach().numpy() for p in generator.parameters()], fprime=None, disp=False)
+        # Convert result back to torch tensors and apply the update
+        updated_params = [torch.tensor(xx, dtype=torch.float64).to(device) for xx in result]
+        return [- g_step_size * (p - u) for p, u in zip(d_generator, updated_params)]
+
 
 def get_d_update(loss_fn, discriminator, generator,
                  d_optim, d_step_size, g_optim, g_step_size,
@@ -178,6 +187,13 @@ def get_d_update(loss_fn, discriminator, generator,
                                         lam=cg_lam,
                                         )
         return [- d_step_size * xx for xx in inv_hyy_dy]
+
+    elif d_optim == "quasi_newton":
+        # BFGS or L-BFGS approximation
+        result = fmin_bfgs(lambda params: loss_fn().item(), x0=[p.clone().detach().cpu().numpy() for p in discriminator.parameters()], fprime=None, disp=False)
+        # Convert result back to torch tensors and apply the update
+        updated_params = [torch.tensor(xx, dtype=torch.float64).to(device) for xx in result]
+        return [d_step_size * (p - u) for p, u in zip(d_discriminator, updated_params)]
 
 
 def eigenvalue(loss_fn, discriminator, generator, hvp):
@@ -416,18 +432,18 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
                       "fnorm: {:.8e}".format(fnorm) if args.dataset == "covariance" else "",
                       )
 
-            # torch.save({'model_state_dict': discriminator.state_dict(),
-            #             'gradient': autograd(loss_fn_full_batch(), discriminator.parameters())
-            #             },
-            #            os.path.join(save_folder, "discriminator-epoch_{:d}.tar".format(i))
-            #            )
+            torch.save({'model_state_dict': discriminator.state_dict(),
+                        'gradient': autograd(loss_fn_full_batch(), discriminator.parameters())
+                        },
+                       os.path.join(save_folder, "discriminator-epoch_{:d}.tar".format(i))
+                       )
 
-            # torch.save({'model_state_dict': generator.state_dict(),
-            #             'gradient': autograd(loss_fn_full_batch(), generator.parameters()),
-            #             'generator_norm': fnorm if args.dataset == "covariance" else None,
-            #             },
-            #            os.path.join(save_folder, "generator-epoch_{:d}.tar".format(i))
-            #            )
+            torch.save({'model_state_dict': generator.state_dict(),
+                        'gradient': autograd(loss_fn_full_batch(), generator.parameters()),
+                        'generator_norm': fnorm if args.dataset == "covariance" else None,
+                        },
+                       os.path.join(save_folder, "generator-epoch_{:d}.tar".format(i))
+                       )
 
     current_time = time.time()
     print("total running time {:f}".format(current_time - start_time))
