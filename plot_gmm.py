@@ -60,4 +60,4 @@ plt.figure(figsize=(4, 3))
 sns.kdeplot(fake_data[:, 0], fake_data[:, 1], shade=True, fill=True)
 
 plt.show()
-#plt.savefig()
+plt.savefig()

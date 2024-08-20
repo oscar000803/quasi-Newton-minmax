@@ -23,12 +23,12 @@ print_iter=1
 
 # 1462 epoch 215s
 # gda-20
-d_optim=gd
-d_step_size=0.02
-d_num_step=20
-g_optim=gd
-g_step_size=0.02
-simultaneous=0
+# d_optim=gd
+# d_step_size=0.02
+# d_num_step=20
+# g_optim=gd
+# g_step_size=0.02
+# simultaneous=0
 
 
 # # sd 

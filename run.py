@@ -436,8 +436,7 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
 def get_save_folder(dataset, d_optim, d_step_size, d_num_step, g_optim, g_step_size):
     return "./checkpoints/{}/{}-{}-{}-{}-{}".format(dataset, g_optim, g_step_size, d_optim, d_step_size, d_num_step)
 
-
-if __name__ == "__main__":
+if __name__ == "__main__": # check if the script is being run directly or being imported as a module in another script
     device = "cuda:0"
 
     import argparse

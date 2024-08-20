@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 
 import seaborn as sns
 
-g_optim = 'newton'
+g_optim = 'gd'
 d_optim = 'newton'
 epoch=50
 
-pattern = "./checkpoints/mnist/{}-1.0-{}-1.0-1/{}-epoch_{}.tar"
+pattern = "./checkpoints/mnist/{}-0.01-{}-1.0-1/{}-epoch_{}.tar"
 #pattern = "./checkpoints/mnist/{}-epoch_{}.tar"
 
 generator = Generator().double()
