@@ -65,7 +65,7 @@ print_iter=1
 
 # # gd-quasinewton
 d_optim=quasi_newton
-d_step_size=1.
+d_step_size=1
 d_num_step=1
 g_optim=gd
 g_step_size=0.02
