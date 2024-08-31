@@ -3,8 +3,8 @@
 # configuration for estimation the mean vector of a gaussian distribution
 
 epoch=1000
-# dataset=single_gaussian
-dataset=single_gaussian_ill_conditioned
+dataset=single_gaussian
+# dataset=single_gaussian_ill_conditioned
 train_size=10000
 batch_size=10000
 
@@ -14,12 +14,12 @@ save_iter=1
 print_iter=1
 
 # # 2ts-gda
-# d_optim=gd
-# d_step_size=0.5
-# d_num_step=1
-# g_optim=gd
-# g_step_size=0.05
-# simultaneous=0
+d_optim=gd
+d_step_size=0.5
+d_num_step=1
+g_optim=gd
+g_step_size=0.05
+simultaneous=0
 
 # # gda-20
 # d_optim=gd
@@ -53,13 +53,21 @@ print_iter=1
 # g_step_size=0.05
 # simultaneous=0
 
+# gd-quasinewton
+# d_optim=quasi_newton
+# d_step_size=1
+# d_num_step=1
+# g_optim=gd
+# g_step_size=0.05
+# simultaneous=0
+
 # complete newton
-d_optim=newton
-d_step_size=1.
-d_num_step=1
-g_optim=newton
-g_step_size=1.
-simultaneous=0
+# d_optim=newton
+# d_step_size=1.
+# d_num_step=1
+# g_optim=newton
+# g_step_size=1.
+# simultaneous=0
 
 python run.py --epoch $epoch \
               --dataset $dataset \
