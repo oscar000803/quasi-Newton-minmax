@@ -13,8 +13,8 @@ plt.rc('pdf', fonttype=42)
 
 def plot_single_gaussian():
     def get_lst(g_optim, g_step_size, d_optim, d_step_size, d_num_step):
-        # pattern = "./checkpoints/single_gaussian/{}-{}-{}-{}-{}/{}-epoch_{:d}.tar"
-        pattern = "./checkpoints/single_gaussian_ill_conditioned/{}-{}-{}-{}-{}/{}-epoch_{:d}.tar"
+        pattern = "./checkpoints/single_gaussian/{}-{}-{}-{}-{}/{}-epoch_{:d}.tar"
+        # pattern = "./checkpoints/single_gaussian_ill_conditioned/{}-{}-{}-{}-{}/{}-epoch_{:d}.tar"
 
         lst_eta = []
         lst_w = []
@@ -36,21 +36,25 @@ def plot_single_gaussian():
 
         return lst_epoch, lst_eta, lst_w
 
-    # lst_epoch, lst_gd_gd_eta, lst_gd_gd_w = get_lst("gd", 0.05, "gd", 0.5, 1)
-    lst_epoch, lst_2ts_gd_gd_eta, lst_2ts_gd_gd_w = get_lst("gd", 0.05, "gd", 0.5, 1)
-    lst_epoch, lst_gd_gd_unrolled_eta, lst_gd_gd_unrolled_w = get_lst("gd", 0.05, "gd", 0.05, 20)
-    lst_epoch, lst_sd_gd_eta, lst_sd_gd_w = get_lst("sd", 0.05, "gd", 0.5, 1)
-    lst_epoch, lst_gd_fr_eta, lst_gd_fr_w = get_lst("gd", 0.05, "fr", 0.5, 1)
-    lst_epoch, lst_gd_newton_eta, lst_gd_newton_w = get_lst("gd", 0.05, "newton", 1.0, 1)
+    lst_epoch, lst_gd_gd_eta, lst_gd_gd_w = get_lst("gd", 0.05, "gd", 0.5, 1)
+    # lst_epoch, lst_2ts_gd_gd_eta, lst_2ts_gd_gd_w = get_lst("gd", 0.05, "gd", 0.5, 1)
+    # lst_epoch, lst_gd_gd_unrolled_eta, lst_gd_gd_unrolled_w = get_lst("gd", 0.05, "gd", 0.05, 20)
+    # lst_epoch, lst_sd_gd_eta, lst_sd_gd_w = get_lst("sd", 0.05, "gd", 0.5, 1)
+    # lst_epoch, lst_gd_fr_eta, lst_gd_fr_w = get_lst("gd", 0.05, "fr", 0.5, 1)
+    # lst_epoch, lst_gd_newton_eta, lst_gd_newton_w = get_lst("gd", 0.05, "newton", 1.0, 1)
+    #gd-quasi-Newton
+    lst_epoch, lst_gd_qn_eta, lst_gd_qn_w = get_lst("gd", 0.05, "quasi_newton", 1.0, 1)
     lst_epoch, lst_newton_newton_eta, lst_newton_newton_w = get_lst("newton", 1.0, "newton", 1.0, 1)
 
     fig, axes = plt.subplots(figsize=(7.5, 3.5), nrows=1, ncols=2)
-    # axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_gd_eta], linewidth=1.5, linestyle='-', label='gda')
-    axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_2ts_gd_gd_eta], linewidth=1.5, linestyle=':', label='2ts-gda', color='tab:red')
-    axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_gd_unrolled_eta], linewidth=1.5, linestyle=':', label='gda-20', color='tab:cyan')
-    axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_sd_gd_eta], linewidth=2, linestyle='-.', label='tgda', color='tab:olive')
-    axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_fr_eta], linewidth=2, linestyle='-.', label='fr', color='tab:pink')
-    axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_newton_eta], linewidth=2, linestyle='--', label='gdn', color='tab:blue')
+    axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_gd_eta], linewidth=1.5, linestyle='-', label='gda')
+    # axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_2ts_gd_gd_eta], linewidth=1.5, linestyle=':', label='2ts-gda', color='tab:red')
+    # axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_gd_unrolled_eta], linewidth=1.5, linestyle=':', label='gda-20', color='tab:cyan')
+    # axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_sd_gd_eta], linewidth=2, linestyle='-.', label='tgda', color='tab:olive')
+    # axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_fr_eta], linewidth=2, linestyle='-.', label='fr', color='tab:pink')
+    # axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_newton_eta], linewidth=2, linestyle='--', label='gdn', color='tab:blue')
+    #
+    axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_qn_eta], linewidth=1, linestyle='-', label='gdqn', color='tab:pink')
     axes[0].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_newton_newton_eta], linewidth=1, linestyle='-', label='cn', color='tab:orange')
     axes[0].set_yscale('log')
     axes[0].set_xlabel("epoch", fontsize=15)
@@ -58,12 +62,14 @@ def plot_single_gaussian():
     axes[0].tick_params(labelsize=12)
     axes[0].legend(loc='center', bbox_to_anchor=(0.3, 0.4), fontsize=10)
 
-    # axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_gd_w], linewidth=1.5, linestyle='-', label='gda')
-    axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_2ts_gd_gd_w], linewidth=1.5, linestyle=':', label='2ts-gda', color='tab:red')
-    axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_gd_unrolled_w], linewidth=1.5, linestyle=':', label='gda-20', color='tab:cyan')
-    axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_sd_gd_w], linewidth=2, linestyle='-.', label='tgda', color='tab:olive')
-    axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_fr_w], linewidth=2, linestyle='-.', label='fr', color='tab:pink')
-    axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_newton_w], linewidth=2, linestyle='--', label='gdn', color='tab:blue')
+    axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_gd_w], linewidth=1.5, linestyle='-', label='gda')
+    # axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_2ts_gd_gd_w], linewidth=1.5, linestyle=':', label='2ts-gda', color='tab:red')
+    # axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_gd_unrolled_w], linewidth=1.5, linestyle=':', label='gda-20', color='tab:cyan')
+    # axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_sd_gd_w], linewidth=2, linestyle='-.', label='tgda', color='tab:olive')
+    # axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_fr_w], linewidth=2, linestyle='-.', label='fr', color='tab:pink')
+    # axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_newton_w], linewidth=2, linestyle='--', label='gdn', color='tab:blue')
+    #
+    axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_gd_qn_w], linewidth=1, linestyle='-', label='gdqn', color='tab:pink')
     axes[1].plot(lst_epoch, [np.linalg.norm(xx) for xx in lst_newton_newton_w], linewidth=1, linestyle='-', label='cn', color='tab:orange')
     axes[1].set_yscale('log')
     axes[1].set_xlabel("epoch", fontsize=15)
