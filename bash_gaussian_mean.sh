@@ -55,10 +55,26 @@ simultaneous=0
 
 # gd-quasinewton
 # d_optim=quasi_newton
-# d_step_size=1
+# d_step_size=1.0
 # d_num_step=1
 # g_optim=gd
 # g_step_size=0.05
+# simultaneous=0
+
+# quasinewton-gd
+# g_optim=quasi_newton
+# g_step_size=1
+# d_num_step=1
+# d_optim=gd
+# d_step_size=0.05
+# simultaneous=0
+
+# complete-quasinewton
+# d_optim=quasi_newton
+# d_step_size=1.0
+# d_num_step=1
+# g_optim=quasi_newton
+# g_step_size=1.0
 # simultaneous=0
 
 # complete newton

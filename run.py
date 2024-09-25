@@ -13,6 +13,8 @@ from data import *
 
 from utils import *
 
+from quasi_newton import *
+
 # import update function for BFGS
 from scipy.optimize import fmin_bfgs
 
@@ -25,7 +27,6 @@ def loss_wasserstein(discriminator, generator, real_data, noise):
         loss = loss - 1e-8 * torch.sum(param ** 2)
 
     return loss
-
 
 def loss_js(discriminator, generator, real_data, noise):
     ones = torch.ones((real_data.size(0), 1), dtype=torch.float, device=device).double()
@@ -43,68 +44,36 @@ def loss_js(discriminator, generator, real_data, noise):
 
     return loss
 
-
 def autograd(outputs, inputs, create_graph=False):
     """Compute gradient of outputs w.r.t. inputs, assuming outputs is a scalar."""
     inputs = tuple(inputs)
     grads = torch.autograd.grad(outputs, inputs, create_graph=create_graph, allow_unused=True)
-    return [xx if xx is not None else yy.new_zeros(yy.size()) for xx, yy in zip(grads, inputs)]
-
+    g = [xx if xx is not None else yy.new_zeros(yy.size()) for xx, yy in zip(grads, inputs)]
+    return g
 
 def hxx_product(loss_fn, discriminator, generator, tensors):
     d_generator = autograd(loss_fn(), generator.parameters(), create_graph=True)
     return autograd(dot(d_generator, tensors), generator.parameters())
 
-
 def hyy_product(loss_fn, discriminator, generator, tensors):
     d_discriminator = autograd(loss_fn(), discriminator.parameters(), create_graph=True)
     return autograd(dot(d_discriminator, tensors), discriminator.parameters())
-
 
 def hyx_product(loss_fn, discriminator, generator, tensors):
     d_generator = autograd(loss_fn(), generator.parameters(), create_graph=True)
     return autograd(dot(d_generator, tensors), discriminator.parameters())
 
-
 def hxy_product(loss_fn, discriminator, generator, tensors):
     d_discriminator = autograd(loss_fn(), discriminator.parameters(), create_graph=True)
     return autograd(dot(d_discriminator, tensors), generator.parameters())
-
 
 def hfull_product(loss_fn, discriminator, generator, tensors):
     d_generator_discriminator = autograd(loss_fn(), concat(generator.parameters(), discriminator.parameters()), create_graph=True)
     return autograd(dot(d_generator_discriminator, tensors), concat(generator.parameters(), discriminator.parameters()))
 
-
-"""Deprecated hessian-vector product. Does not handle None gradient."""
-# def hxx_product(loss_fn, discriminator, generator, tensors):
-#     d_generator = autograd.grad(loss_fn(), generator.parameters(), create_graph=True)
-#     return autograd.grad(dot(d_generator, tensors), generator.parameters())
-#
-#
-# def hyy_product(loss_fn, discriminator, generator, tensors):
-#     d_discriminator = autograd.grad(loss_fn(), discriminator.parameters(), create_graph=True)
-#     return autograd.grad(dot(d_discriminator, tensors), discriminator.parameters(), allow_unused=True)
-#
-#
-# def hyx_product(loss_fn, discriminator, generator, tensors):
-#     d_generator = autograd.grad(loss_fn(), generator.parameters(), create_graph=True)
-#     return autograd.grad(dot(d_generator, tensors), discriminator.parameters())
-#
-#
-# def hxy_product(loss_fn, discriminator, generator, tensors):
-#     d_discriminator = autograd.grad(loss_fn(), discriminator.parameters(), create_graph=True)
-#     return autograd.grad(dot(d_discriminator, tensors), generator.parameters())
-#
-#
-# def hfull_product(loss_fn, discriminator, generator, tensors):
-#     d_generator_discriminator = autograd.grad(loss_fn(), concat(generator.parameters(), discriminator.parameters()), create_graph=True)
-#     return autograd.grad(dot(d_generator_discriminator, tensors), concat(generator.parameters(), discriminator.parameters()))
-
-
 def get_g_update(loss_fn, discriminator, generator,
                  d_optim, d_step_size, g_optim, g_step_size,
-                 cg_maxiter = 0, cg_maxiter_cn = 0, cg_tol = 0, cg_lam = 0, cg_lam_cn = 0):
+                 cg_maxiter = 0, cg_maxiter_cn = 0, cg_tol = 0, cg_lam = 0, cg_lam_cn = 0, BFGS_generator=None):
     """Compute the update on generator to be added to the parameters"""
     d_generator = autograd(loss_fn(), generator.parameters())
 
@@ -142,18 +111,15 @@ def get_g_update(loss_fn, discriminator, generator,
         return [- g_step_size * xx for xx in inv_hessian_dx]
 
     elif g_optim == "quasi_newton":
-        # BFGS or L-BFGS approximation
-        result = fmin_bfgs(lambda params: loss_fn().item(), x0=[p.clone().detach().numpy() for p in generator.parameters()], fprime=None, disp=False)
-        # Convert result back to torch tensors and apply the update
-        updated_params = [torch.tensor(xx, dtype=torch.float64).to(device) for xx in result]
-        return [- g_step_size * (p - u) for p, u in zip(d_generator, updated_params)]
-
-
+        return [-xx for xx in BFGS_update(BFGS_generator, g_step_size, generator, loss_fn, autograd)]
+        
+        
 def get_d_update(loss_fn, discriminator, generator,
                  d_optim, d_step_size, g_optim, g_step_size,
-                 cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i):
+                 cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, BFGS_discriminator=None):
     """Compute the update on discriminator to be added to the parameters"""
     d_discriminator = autograd(loss_fn(), discriminator.parameters())
+
     #lambda_max = largest_eig(lambda u: hyy_product(loss_fn, discriminator, generator, tensors=u), discriminator.parameters())
     #lambda_max = largest_eig(lambda u: hxx_product(loss_fn, discriminator, generator, tensors=u), generator.parameters())
     #print("epoch: ", i, " largest eigenvalue: ", lambda_max)
@@ -186,15 +152,12 @@ def get_d_update(loss_fn, discriminator, generator,
                                         tol=cg_tol,
                                         lam=cg_lam,
                                         )
+
         return [- d_step_size * xx for xx in inv_hyy_dy]
 
     elif d_optim == "quasi_newton":
-        # BFGS or L-BFGS approximation
-        result = fmin_bfgs(lambda params: loss_fn().item(), x0=[p.clone().detach().cpu().numpy() for p in discriminator.parameters()], fprime=None, disp=False)
-        # Convert result back to torch tensors and apply the update
-        updated_params = [torch.tensor(xx, dtype=torch.float64).to(device) for xx in result]
-        return [d_step_size * (p - u) for p, u in zip(d_discriminator, updated_params)]
-
+        return BFGS_update(BFGS_discriminator, d_step_size, discriminator, loss_fn, autograd)
+        
 
 def eigenvalue(loss_fn, discriminator, generator, hvp):
     """Compute the eigenvalues and form the of Hessian. Only applicable for the covariance problem."""
@@ -213,7 +176,6 @@ def eigenvalue(loss_fn, discriminator, generator, hvp):
     eig = np.linalg.eigvals(hyy)
     return eig, hyy
 
-
 def train(discriminator, generator, loader, noise_generator, device="cuda", epoch=1,
           d_optim="gd", d_step_size=0.02, d_num_step=1,
           g_optim="gd", g_step_size=0.01,
@@ -230,7 +192,6 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
     elif d_optim == "rmsprop":
         _d_optim = optim.RMSprop(discriminator.parameters(), lr=d_step_size)
 
-
     if g_optim == "adam":
         _g_optim = optim.Adam(generator.parameters(), lr=g_step_size)
 
@@ -243,6 +204,21 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
     limit = 215.
     start_time = time.time()
     time_seq = []
+
+    #################### QN ####################
+    # declare parameters for quasi-Newton
+    BFGS_generator = BFGS_param()
+    BFGS_discriminator = BFGS_param()
+
+    # initialize hessian with identity matrix
+    # if g_optim == "quasi_newton":
+    #     total_p = sum(p.numel() for p in generator.parameters())
+    #     BFGS_generator.approximate_Hessian = torch.eye(total_p, device=next(generator.parameters()).device).double()
+    # if d_optim == "quasi_newton":
+    #     total_p = sum(p.numel() for p in discriminator.parameters())
+    #     BFGS_discriminator.approximate_Hessian = torch.eye(total_p, device=next(discriminator.parameters()).device).double()
+
+    #################### QN ####################
 
     for i in range(1, epoch + 1):
         cur_time = time.time() - start_time
@@ -286,11 +262,11 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
             if simultaneous:
                 g_update = get_g_update(loss_fn, discriminator, generator,
                                         d_optim, d_step_size, g_optim, g_step_size,
-                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn)
+                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, BFGS_generator)
 
                 d_update = get_d_update(loss_fn, discriminator, generator,
                                         d_optim, d_step_size, g_optim, g_step_size,
-                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i)
+                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, BFGS_discriminator)
                 
                 if g_optim == "eg" and d_optim == "eg":
                     dis_half = copy.deepcopy(discriminator)
@@ -306,11 +282,11 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
 
                     g_update = get_g_update(loss_fn_eg, dis_half, gen_half,
                                         d_optim, d_step_size, g_optim, g_step_size,
-                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn)
+                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, BFGS_generator)
 
                     d_update = get_d_update(loss_fn_eg, dis_half, gen_half,
                                         d_optim, d_step_size, g_optim, g_step_size,
-                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i)
+                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, BFGS_discriminator)
 
                 with torch.no_grad():
                     for param, update in zip(generator.parameters(), g_update):
@@ -331,7 +307,7 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
                 else:
                     g_update = get_g_update(loss_fn, discriminator, generator,
                                             d_optim, d_step_size, g_optim, g_step_size,
-                                            cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn)
+                                            cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, BFGS_generator)
 
                     with torch.no_grad():
                         for param, update in zip(generator.parameters(), g_update):
@@ -349,11 +325,12 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
                     for _ in range(d_num_step):
                         d_update = get_d_update(loss_fn, discriminator, generator,
                                                 d_optim, d_step_size, g_optim, g_step_size,
-                                                cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i)
-
+                                                cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, BFGS_discriminator)
+                        # print("dd",d_update)
                         with torch.no_grad():
                             for param, update in zip(discriminator.parameters(), d_update):
                                 param += update
+                        # print("dp",flat(discriminator.parameters()))
 
                     if line_search and False:
                         alpha, rho, const = 1.0, 0.8, 0.5
@@ -448,7 +425,6 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
     current_time = time.time()
     print("total running time {:f}".format(current_time - start_time))
 
-
 def get_save_folder(dataset, d_optim, d_step_size, d_num_step, g_optim, g_step_size):
     return "./checkpoints/{}/{}-{}-{}-{}-{}".format(dataset, g_optim, g_step_size, d_optim, d_step_size, d_num_step)
 
@@ -508,9 +484,9 @@ if __name__ == "__main__": # check if the script is being run directly or being 
         generator = GNet().to(device).double()
 
         if args.pretrain:
-            # pattern = "./checkpoints/gmm/pretrain/{}-epoch_199.tar"
+            pattern = "./checkpoints/gmm/pretrain/{}-epoch_199.tar"
             # pattern = "./checkpoints/gmm/gd-0.01-newton-1.0-1/{}-epoch_100.tar"
-            pattern = './checkpoints/gmm/_gd-gd/{}-epoch_89.tar'
+            # pattern = './checkpoints/gmm/_gd-gd/{}-epoch_89.tar'
 
             discriminator.load_state_dict(torch.load(pattern.format("discriminator"))['model_state_dict'])
             generator.load_state_dict(torch.load(pattern.format("generator"))['model_state_dict'])
