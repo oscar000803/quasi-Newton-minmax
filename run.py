@@ -111,7 +111,7 @@ def get_g_update(loss_fn, discriminator, generator,
         return [- g_step_size * xx for xx in inv_hessian_dx]
 
     elif g_optim == "quasi_newton":
-        return [-xx for xx in BFGS_update(BFGS_generator, g_step_size, generator, loss_fn, autograd)]
+        return BFGS_update(BFGS_generator, g_step_size, generator, loss_fn, autograd)
         
         
 def get_d_update(loss_fn, discriminator, generator,
@@ -156,7 +156,9 @@ def get_d_update(loss_fn, discriminator, generator,
         return [- d_step_size * xx for xx in inv_hyy_dy]
 
     elif d_optim == "quasi_newton":
-        return BFGS_update(BFGS_discriminator, d_step_size, discriminator, loss_fn, autograd)
+        def neg_loss():
+            return - loss_fn()
+        return BFGS_update(BFGS_discriminator, d_step_size, discriminator, neg_loss, autograd)
         
 
 def eigenvalue(loss_fn, discriminator, generator, hvp):
@@ -208,16 +210,6 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
     #################### QN ####################
     # declare parameters for quasi-Newton
     BFGS_generator = BFGS_param()
-    BFGS_discriminator = BFGS_param()
-
-    # initialize hessian with identity matrix
-    # if g_optim == "quasi_newton":
-    #     total_p = sum(p.numel() for p in generator.parameters())
-    #     BFGS_generator.approximate_Hessian = torch.eye(total_p, device=next(generator.parameters()).device).double()
-    # if d_optim == "quasi_newton":
-    #     total_p = sum(p.numel() for p in discriminator.parameters())
-    #     BFGS_discriminator.approximate_Hessian = torch.eye(total_p, device=next(discriminator.parameters()).device).double()
-
     #################### QN ####################
 
     for i in range(1, epoch + 1):
@@ -226,6 +218,11 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
         time_seq.append(cur_time)
         if i == epoch:
             print("{:f} seconds in {:d} epochs".format(time.time() - start_time, epoch))
+
+        # print([x for x in generator.parameters()])
+        # print([x for x in discriminator.parameters()])
+
+        BFGS_discriminator = BFGS_param()
 
         for batch_idx, data in enumerate(loader):
             real_data = data[0].to(device)
@@ -309,6 +306,9 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
                                             d_optim, d_step_size, g_optim, g_step_size,
                                             cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, BFGS_generator)
 
+                    if g_update == None:
+                        continue
+
                     with torch.no_grad():
                         for param, update in zip(generator.parameters(), g_update):
                             param += update
@@ -326,7 +326,10 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
                         d_update = get_d_update(loss_fn, discriminator, generator,
                                                 d_optim, d_step_size, g_optim, g_step_size,
                                                 cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, BFGS_discriminator)
-                        # print("dd",d_update)
+                        
+                        if d_update == None:
+                            break
+                        
                         with torch.no_grad():
                             for param, update in zip(discriminator.parameters(), d_update):
                                 param += update

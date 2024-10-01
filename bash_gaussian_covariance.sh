@@ -2,7 +2,7 @@
 
 # configuration for estimation the covariance of a gaussian distribution
 
-epoch=20000
+epoch=1000
 dataset=covariance
 train_size=10000
 batch_size=10000
@@ -64,12 +64,12 @@ print_iter=1
 # simultaneous=0
 
 # # gd-quasinewton
-d_optim=quasi_newton
-d_step_size=1
-d_num_step=1
-g_optim=gd
-g_step_size=0.02
-simultaneous=0
+# d_optim=quasi_newton
+# d_step_size=1
+# d_num_step=10
+# g_optim=gd
+# g_step_size=0.02
+# simultaneous=0
 
 # # quasinewton-gd
 # d_optim=gd
@@ -82,10 +82,18 @@ simultaneous=0
 # # complete-quasinewton
 # d_optim=quasi_newton
 # d_step_size=1
-# d_num_step=1
+# d_num_step=20
 # g_optim=quasi_newton
-# g_step_size=1
+# g_step_size=0.5
 # simultaneous=0
+
+# # quasinewton-newton
+d_optim=newton
+d_step_size=1
+d_num_step=1
+g_optim=quasi_newton
+g_step_size=0.7
+simultaneous=0
 
 # # EG
 # d_optim=eg
