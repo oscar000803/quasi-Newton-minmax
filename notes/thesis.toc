@@ -1,0 +1,6 @@
+\beamer@sectionintoc {1}{Introduction}{3}{0}{1}
+\beamer@sectionintoc {2}{Related Works}{7}{0}{2}
+\beamer@sectionintoc {3}{Our Motivation}{13}{0}{3}
+\beamer@sectionintoc {4}{Preliminaries}{15}{0}{4}
+\beamer@sectionintoc {5}{Summary and Future works}{17}{0}{5}
+\beamer@sectionintoc {6}{Reference}{19}{0}{6}
