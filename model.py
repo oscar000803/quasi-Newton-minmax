@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from utils import *
 
+# torch.manual_seed(1)
 
 def _l2normalize(v, eps=1e-12):
     return v / (torch.norm(v) + eps)
@@ -99,6 +100,8 @@ class GNet(nn.Module):
         x = self.fc4(x)
         return x
 
+# initial
+radius = 1e-4
 
 class OneLayerNet(nn.Module):
 
@@ -106,7 +109,7 @@ class OneLayerNet(nn.Module):
         super().__init__()
         # make sure the initialization is close to zero
         # otherwise, newton step might overshoot in some cases
-        self.w = nn.Parameter(1e-1 * torch.randn((input_dim, 1), dtype=torch.double))
+        self.w = nn.Parameter(radius * torch.randn((input_dim, 1), dtype=torch.double))
 
     def forward(self, x):
         return x.mm(self.w)
@@ -118,7 +121,7 @@ class ShiftNet(nn.Module):
         super().__init__()
         # make sure the initialization is close to zero
         # otherwise, newton step might overshoot in some cases
-        self.eta = nn.Parameter(1e-1 * torch.randn((input_dim, ), dtype=torch.float))
+        self.eta = nn.Parameter(radius * torch.randn((input_dim, ), dtype=torch.float))
 
     def forward(self, x):
         return x + self.eta

@@ -3,6 +3,7 @@ import math
 import numpy as np
 
 import torch
+# torch.manual_seed(1)
 
 import torchvision
 import torchvision.transforms as transforms
@@ -66,11 +67,19 @@ class NoiseGenerator(object):
 
 def get_data(option, train_size):
     if option == "single_gaussian":
-        dataset = torch.randn(train_size, 2).double()
+        # initial: 2
+        dim = 10000
+        dataset = torch.randn(train_size, dim).double()
         dataset = torch.utils.data.TensorDataset(dataset)
 
     elif option == "single_gaussian_ill_conditioned":
-        dataset = torch.randn(train_size, 2).double().mm(torch.tensor([[1., 0], [0, math.sqrt(0.05)]], dtype=torch.double))
+        # initial: 2
+        dim = 10
+        # dataset = torch.randn(train_size, 2).double().mm(torch.tensor([[1., 0], [0, math.sqrt(0.05)]], dtype=torch.double))
+        eigen = torch.rand(dim).double()
+        eigen[0] = 1.
+        eigen[1] = math.sqrt(0.05)
+        dataset = torch.randn(train_size, dim).double().mm(torch.diag(eigen))
         dataset = torch.utils.data.TensorDataset(dataset)
 
     elif option == "covariance":

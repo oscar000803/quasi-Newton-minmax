@@ -6,6 +6,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import copy
+import csv
 
 from model import *
 
@@ -73,7 +74,7 @@ def hfull_product(loss_fn, discriminator, generator, tensors):
 
 def get_g_update(loss_fn, discriminator, generator,
                  d_optim, d_step_size, g_optim, g_step_size,
-                 cg_maxiter = 0, cg_maxiter_cn = 0, cg_tol = 0, cg_lam = 0, cg_lam_cn = 0, BFGS_generator=None):
+                 cg_maxiter = 0, cg_maxiter_cn = 0, cg_tol = 0, cg_lam = 0, cg_lam_cn = 0, QN_generator=None):
     """Compute the update on generator to be added to the parameters"""
     d_generator = autograd(loss_fn(), generator.parameters())
 
@@ -110,13 +111,16 @@ def get_g_update(loss_fn, discriminator, generator,
 
         return [- g_step_size * xx for xx in inv_hessian_dx]
 
-    elif g_optim == "quasi_newton":
-        return BFGS_update(BFGS_generator, g_step_size, generator, loss_fn, autograd)
+    elif g_optim == "BFGS":
+        return BFGS_update(QN_generator, g_step_size, generator, loss_fn, autograd)
+    
+    elif g_optim == "LBFGS":
+        return LBFGS_update(QN_generator, g_step_size, generator, loss_fn, autograd, 3)
         
         
 def get_d_update(loss_fn, discriminator, generator,
                  d_optim, d_step_size, g_optim, g_step_size,
-                 cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, BFGS_discriminator=None):
+                 cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, QN_discriminator=None):
     """Compute the update on discriminator to be added to the parameters"""
     d_discriminator = autograd(loss_fn(), discriminator.parameters())
 
@@ -155,10 +159,15 @@ def get_d_update(loss_fn, discriminator, generator,
 
         return [- d_step_size * xx for xx in inv_hyy_dy]
 
-    elif d_optim == "quasi_newton":
+    elif d_optim == "BFGS":
         def neg_loss():
             return - loss_fn()
-        return BFGS_update(BFGS_discriminator, d_step_size, discriminator, neg_loss, autograd)
+        return BFGS_update(QN_discriminator, d_step_size, discriminator, neg_loss, autograd)
+    
+    elif d_optim == "LBFGS":
+        def neg_loss():
+            return - loss_fn()
+        return LBFGS_update(QN_discriminator, d_step_size, discriminator, neg_loss, autograd, 3)
         
 
 def eigenvalue(loss_fn, discriminator, generator, hvp):
@@ -209,12 +218,20 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
 
     #################### QN ####################
     # declare parameters for quasi-Newton
-    BFGS_generator = BFGS_param()
+    QN_generator = None
+    if g_optim == "BFGS":
+        QN_generator = BFGS_param()
+    if g_optim == "LBFGS":
+        QN_generator = LBFGS_param()
     #################### QN ####################
+
+    PRINT_TIME = []
 
     for i in range(1, epoch + 1):
         cur_time = time.time() - start_time
         print("cur time: ", cur_time)
+        if i != 1:
+            PRINT_TIME.append(cur_time)
         time_seq.append(cur_time)
         if i == epoch:
             print("{:f} seconds in {:d} epochs".format(time.time() - start_time, epoch))
@@ -222,8 +239,11 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
         # print([x for x in generator.parameters()])
         # print([x for x in discriminator.parameters()])
 
-        BFGS_discriminator = BFGS_param()
-
+        QN_discriminator = None
+        if d_optim == "BFGS":
+            QN_discriminator = BFGS_param()
+        if d_optim == "LBFGS":
+            QN_discriminator = LBFGS_param()
         for batch_idx, data in enumerate(loader):
             real_data = data[0].to(device)
             noise = noise_generator(real_data, generator)
@@ -259,11 +279,11 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
             if simultaneous:
                 g_update = get_g_update(loss_fn, discriminator, generator,
                                         d_optim, d_step_size, g_optim, g_step_size,
-                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, BFGS_generator)
+                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, QN_generator)
 
                 d_update = get_d_update(loss_fn, discriminator, generator,
                                         d_optim, d_step_size, g_optim, g_step_size,
-                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, BFGS_discriminator)
+                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, QN_discriminator)
                 
                 if g_optim == "eg" and d_optim == "eg":
                     dis_half = copy.deepcopy(discriminator)
@@ -279,11 +299,11 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
 
                     g_update = get_g_update(loss_fn_eg, dis_half, gen_half,
                                         d_optim, d_step_size, g_optim, g_step_size,
-                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, BFGS_generator)
+                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, QN_generator)
 
                     d_update = get_d_update(loss_fn_eg, dis_half, gen_half,
                                         d_optim, d_step_size, g_optim, g_step_size,
-                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, BFGS_discriminator)
+                                        cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, QN_discriminator)
 
                 with torch.no_grad():
                     for param, update in zip(generator.parameters(), g_update):
@@ -304,7 +324,7 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
                 else:
                     g_update = get_g_update(loss_fn, discriminator, generator,
                                             d_optim, d_step_size, g_optim, g_step_size,
-                                            cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, BFGS_generator)
+                                            cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, QN_generator)
 
                     if g_update == None:
                         continue
@@ -325,7 +345,7 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
                     for _ in range(d_num_step):
                         d_update = get_d_update(loss_fn, discriminator, generator,
                                                 d_optim, d_step_size, g_optim, g_step_size,
-                                                cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, BFGS_discriminator)
+                                                cg_maxiter, cg_maxiter_cn, cg_tol, cg_lam, cg_lam_cn, i, QN_discriminator)
                         
                         if d_update == None:
                             break
@@ -333,7 +353,6 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
                         with torch.no_grad():
                             for param, update in zip(discriminator.parameters(), d_update):
                                 param += update
-                        # print("dp",flat(discriminator.parameters()))
 
                     if line_search and False:
                         alpha, rho, const = 1.0, 0.8, 0.5
@@ -427,6 +446,11 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
 
     current_time = time.time()
     print("total running time {:f}".format(current_time - start_time))
+    with open(os.path.join(save_folder, "time.csv"), 'w', newline='') as file:
+        writer = csv.writer(file)
+        # Write each item as a new row
+        for item in PRINT_TIME:
+            writer.writerow([item])
 
 def get_save_folder(dataset, d_optim, d_step_size, d_num_step, g_optim, g_step_size):
     return "./checkpoints/{}/{}-{}-{}-{}-{}".format(dataset, g_optim, g_step_size, d_optim, d_step_size, d_num_step)
@@ -475,8 +499,10 @@ if __name__ == "__main__": # check if the script is being run directly or being 
     set_seed(0)
 
     if args.dataset in ["single_gaussian", "single_gaussian_ill_conditioned"]:
-        discriminator = OneLayerNet(input_dim=2).to(device).double()
-        generator = ShiftNet(input_dim=2).to(device).double()
+        # initial: input_dim=2
+        dim = 10000
+        discriminator = OneLayerNet(input_dim=dim).to(device).double()
+        generator = ShiftNet(input_dim=dim).to(device).double()
 
     elif args.dataset == 'covariance':
         discriminator = QuadraticNet(input_dim=2).to(device).double()
@@ -487,8 +513,8 @@ if __name__ == "__main__": # check if the script is being run directly or being 
         generator = GNet().to(device).double()
 
         if args.pretrain:
-            pattern = "./checkpoints/gmm/pretrain/{}-epoch_199.tar"
-            # pattern = "./checkpoints/gmm/gd-0.01-newton-1.0-1/{}-epoch_100.tar"
+            # pattern = "./checkpoints/gmm/pretrain/{}-epoch_199.tar"
+            pattern = "./checkpoints/gmm/gd-0.01-newton-1.0-1/{}-epoch_100.tar"
             # pattern = './checkpoints/gmm/_gd-gd/{}-epoch_89.tar'
 
             discriminator.load_state_dict(torch.load(pattern.format("discriminator"))['model_state_dict'])
