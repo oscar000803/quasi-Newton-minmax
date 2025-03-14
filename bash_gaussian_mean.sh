@@ -2,96 +2,59 @@
 
 # configuration for estimation the mean vector of a gaussian distribution
 
-epoch=1000
-# dataset=single_gaussian
-dataset=single_gaussian_ill_conditioned
+epoch=200
+dataset=single_gaussian
+# dataset=single_gaussian_ill_conditioned
 train_size=10000
 batch_size=10000
 
-cg_maxiter=8
+cg_maxiter=16
 
 save_iter=1
 print_iter=1
 
-# # 2ts-gda
+# # 2ts-gda 0.05, 1, 0.5
 # d_optim=gd
-# d_step_size=0.5
+# d_step_size=1
 # d_num_step=1
 # g_optim=gd
-# g_step_size=0.05
-# simultaneous=0
-
-# # gda-20
-# d_optim=gd
-# d_step_size=0.05
-# d_num_step=20
-# g_optim=gd
-# g_step_size=0.05
-# simultaneous=0
-
-# # sd 
-# d_optim=gd
-# d_step_size=0.5
-# d_num_step=1
-# g_optim=sd
-# g_step_size=0.05
+# g_step_size=0.5
 # simultaneous=1
 
-# # fr 
-# d_optim=fr
-# d_step_size=0.5
-# d_num_step=1
-# g_optim=gd
-# g_step_size=0.05
-# simultaneous=1
-
-# # gd-newton
+# # gd-newton 0.05, 1, 1
 # d_optim=newton
-# d_step_size=1.
+# d_step_size=1
 # d_num_step=1
 # g_optim=gd
-# g_step_size=0.05
-# simultaneous=0
-
-# gd-quasinewton
-# d_optim=quasi_newton
-# d_step_size=1.0
-# d_num_step=10
-# g_optim=gd
-# g_step_size=0.05
-# simultaneous=0
-
-# quasinewton-gd
-# g_optim=quasi_newton
-# g_step_size=0.2
-# d_num_step=1
-# d_optim=gd
-# d_step_size=0.5
-# simultaneous=0
-
-# complete-quasinewton
-# d_optim=quasi_newton
-# d_step_size=1.0
-# d_num_step=10
-# g_optim=quasi_newton
 # g_step_size=0.5
 # simultaneous=0
 
 # complete newton
 # d_optim=newton
-# d_step_size=1.
+# d_step_size=1
 # d_num_step=1
 # g_optim=newton
-# g_step_size=1.
+# g_step_size=1
 # simultaneous=0
 
-# quasinewton-newton
-d_optim=newton
+# gd-quasinewton
+d_optim=LBFGS
 d_step_size=1.0
-d_num_step=1
-g_optim=quasi_newton
-g_step_size=1.0
+d_num_step=5
+g_optim=gd
+g_step_size=0.5
 simultaneous=0
+
+# complete-quasinewton
+# d_optim=BFGS
+# d_step_size=1
+# d_num_step=3
+# g_optim=BFGS
+# g_step_size=1
+# simultaneous=0
+
+
+
 
 python run.py --epoch $epoch \
               --dataset $dataset \

@@ -2,7 +2,7 @@
 
 # configuration for MNIST
 
-epoch=1000
+epoch=200
 dataset=mnist
 train_size=10000
 batch_size=10000
@@ -10,16 +10,16 @@ batch_size=10000
 cg_maxiter=16
 cg_maxiter_cn=16
 
-save_iter=2
-print_iter=2
+save_iter=1
+print_iter=1
 
 # gradient descent ascent 20
-# d_optim=gd
-# d_step_size=0.01
-# d_num_step=20
-# g_optim=gd
-# g_step_size=0.01
-# simultaneous=1
+d_optim=gd
+d_step_size=0.01
+d_num_step=20
+g_optim=gd
+g_step_size=0.01
+simultaneous=1
 
 # # total gradient descent ascent, a.k.a. stackelberg dynamics in Fiez et al 2019
 # d_optim=gd
@@ -38,21 +38,29 @@ print_iter=2
 # simultaneous=1
 
 # gd-newton
-d_optim=newton
-d_step_size=1.0
-d_num_step=1
-g_optim=gd
-g_step_size=0.01
-simultaneous=0
-
-# # complete newton
 # d_optim=newton
 # d_step_size=1.0
 # d_num_step=1
-# g_optim=newton
-# g_step_size=1.0
+# g_optim=gd
+# g_step_size=0.01
 # simultaneous=0
-# cg_maxiter_cn=8
+
+# # complete newton
+d_optim=newton
+d_step_size=1.0
+d_num_step=1
+g_optim=newton
+g_step_size=1.0
+simultaneous=0
+cg_maxiter_cn=8
+
+# # complete LBFGS
+d_optim=BFGS
+d_step_size=0.1
+d_num_step=5
+g_optim=BFGS
+g_step_size=0.1
+simultaneous=0
 
 python run.py --epoch $epoch \
               --dataset $dataset \

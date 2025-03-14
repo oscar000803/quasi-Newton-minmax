@@ -13,12 +13,12 @@ save_iter=2
 print_iter=2
 
 # # gradient descent ascent
-d_optim=gd
-d_step_size=0.01
-d_num_step=1
-g_optim=gd
-g_step_size=0.01
-simultaneous=1
+# d_optim=gd
+# d_step_size=0.01
+# d_num_step=1
+# g_optim=gd
+# g_step_size=0.01
+# simultaneous=1
 
 # # total gradient descent ascent, a.k.a. stackelberg dynamics in Fiez et al 2019
 # d_optim=gd
@@ -67,12 +67,12 @@ simultaneous=1
 # simultaneous=0
 
 # complete newton
-# d_optim=newton
-# d_step_size=1.0
-# d_num_step=1
-# g_optim=newton
-# g_step_size=0.1
-# simultaneous=0
+d_optim=newton
+d_step_size=1.0
+d_num_step=1
+g_optim=LBFGS
+g_step_size=0.05
+simultaneous=0
 
 cg_maxiter_cn=32
 cg_lam_cn=0.1

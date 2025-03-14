@@ -101,7 +101,7 @@ class GNet(nn.Module):
         return x
 
 # initial
-radius = 1e-4
+radius = 1e-2
 
 class OneLayerNet(nn.Module):
 

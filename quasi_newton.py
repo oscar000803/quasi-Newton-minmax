@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import math
 from collections import deque
 
 def compute_hessian(loss, model):
@@ -50,6 +51,8 @@ def BFGS_update(BFGS, step_size, model, loss_fn, autograd):
         if torch.equal(BFGS.dx, grad_flatten):
             return 
         diff_dx = grad_flatten - BFGS.dx
+        if torch.equal(grad_flatten, BFGS.dx):
+            return 
         rho = 1/torch.matmul(diff_dx, BFGS.diff_x)
         V = rho * torch.matmul(diff_dx.view(-1, 1), BFGS.diff_x.view(1, -1))
         V = torch.eye(V.shape[0], device=next(model.parameters()).device) - V
@@ -61,6 +64,8 @@ def BFGS_update(BFGS, step_size, model, loss_fn, autograd):
     s_chunks = torch.split(s, [p.numel() for p in model.parameters()])
     reshape_s = [chunk.view(shape) for chunk, shape in zip(s_chunks, [p.shape for p in model.parameters()])]
     BFGS.diff_x = s
+    if(math.isnan(reshape_s[0][0])):
+        return
     return reshape_s
 
 class LBFGS_param:
@@ -97,8 +102,9 @@ def LBFGS_update(LBFGS, step_size, model, loss_fn, autograd, save):
             alpha = rho*torch.matmul(s, q)
             alphas.append(alpha)
             q = q - alpha*y
-        r = H*q
-        for rho, s, y, alpha in zip(reversed(LBFGS.rho), reversed(LBFGS.diff_x), reversed(LBFGS.diff_dx), alphas):
+        # r = H*q
+        r = q
+        for rho, s, y, alpha in zip(LBFGS.rho, LBFGS.diff_x, LBFGS.diff_dx, reversed(alphas)):
             beta = rho*torch.matmul(y, r)
             r = r + (alpha - beta)*s
         p = - r

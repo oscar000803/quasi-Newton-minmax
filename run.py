@@ -202,6 +202,12 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
 
     elif d_optim == "rmsprop":
         _d_optim = optim.RMSprop(discriminator.parameters(), lr=d_step_size)
+    
+    # use solver for LBFGs for inner problem
+    elif d_optim == "LBFGS":
+        # _d_optim = optim.LBFGS(discriminator.parameters(), lr=d_step_size, max_iter = d_num_step, max_eval = d_num_step * 10, history_size = 3, line_search_fn = "strong_wolfe", tolerance_grad = 0, tolerance_change = 0)
+        _d_optim = optim.LBFGS(discriminator.parameters(), lr=d_step_size, max_iter = d_num_step, history_size = 3, line_search_fn = None, tolerance_grad = 1e-50, tolerance_change = 1e-50)
+    
 
     if g_optim == "adam":
         _g_optim = optim.Adam(generator.parameters(), lr=g_step_size)
@@ -340,6 +346,19 @@ def train(discriminator, generator, loader, noise_generator, device="cuda", epoc
                         loss = - loss_fn()
                         loss.backward()
                         _d_optim.step()
+
+                # update LBFGS by solver
+                # elif d_optim == "LBFGS":
+
+                #     def closure():
+                #         _d_optim.zero_grad()
+                #         loss = - loss_fn()
+                #         loss.backward()
+                #         return loss
+
+                #     # for j in range(d_num_step):
+                #     _d_optim.step(closure)
+                #####
 
                 else:
                     for _ in range(d_num_step):
@@ -500,7 +519,7 @@ if __name__ == "__main__": # check if the script is being run directly or being 
 
     if args.dataset in ["single_gaussian", "single_gaussian_ill_conditioned"]:
         # initial: input_dim=2
-        dim = 10000
+        dim = 1000
         discriminator = OneLayerNet(input_dim=dim).to(device).double()
         generator = ShiftNet(input_dim=dim).to(device).double()
 

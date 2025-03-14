@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 import torch
-# torch.manual_seed(1)
+# torch.manual_seed(10)
 
 import torchvision
 import torchvision.transforms as transforms
@@ -68,7 +68,7 @@ class NoiseGenerator(object):
 def get_data(option, train_size):
     if option == "single_gaussian":
         # initial: 2
-        dim = 10000
+        dim = 1000
         dataset = torch.randn(train_size, dim).double()
         dataset = torch.utils.data.TensorDataset(dataset)
 
